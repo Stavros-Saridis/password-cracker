@@ -1,4 +1,6 @@
 import hashlib
+import os
+import hmac
 
 SUPPORTED_ALGORITHMS = ['md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512']
 
@@ -9,6 +11,18 @@ def hash_password(password, algorithm='sha256'):
     h = hashlib.new(algorithm)
     h.update(password.encode('utf-8'))
     return h.hexdigest()
+
+def hash_with_salt(password, salt=None, algorithm='sha256'):
+    if salt is None:
+        salt = os.urandom(16).hex()
+    h = hashlib.new(algorithm)
+    h.update((salt + password).encode('utf-8'))
+    return h.hexdigest(), salt
+
+def verify_salted_hash(password, salt, stored_hash, algorithm='sha256'):
+    h = hashlib.new(algorithm)
+    h.update((salt + password).encode('utf-8'))
+    return h.hexdigest() == stored_hash
 
 def identify_hash(hash_string):
     length_map = {

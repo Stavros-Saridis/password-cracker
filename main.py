@@ -4,7 +4,7 @@ import os
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-from src.hasher import hash_password, identify_hash
+from src.hasher import hash_password, identify_hash, hash_with_salt, verify_salted_hash
 from src.brute_force import brute_force
 from src.dictionary import dictionary_attack
 from src.rainbow import rainbow_lookup, build_rainbow_table
@@ -29,6 +29,9 @@ Examples:
 
   Rainbow lookup:
     python main.py --crack <hash> --method rainbow
+
+  Salting demo:
+    python main.py --demo-salt password123
         '''
     )
 
@@ -43,6 +46,8 @@ Examples:
     parser.add_argument('--max-length', type=int, default=4, help='Max length for brute force (default: 4)')
     parser.add_argument('--build-rainbow', action='store_true', help='Build rainbow table from wordlist')
     parser.add_argument('--identify', type=str, help='Identify hash type')
+    parser.add_argument('--demo-salt', type=str, help='Demo salting vs unsalted hashing')
+    parser.add_argument('--threads', type=int, default=4, help='Threads for brute force (default: 4)')
 
     args = parser.parse_args()
 
@@ -63,6 +68,31 @@ Examples:
             sys.exit(1)
         build_rainbow_table(args.wordlist)
 
+    elif args.demo_salt:
+        password = args.demo_salt
+        print(f"\n[*] Salting demo for password: '{password}'")
+        print("=" * 50)
+
+        plain_hash = hash_password(password, 'sha256')
+        print(f"\n[1] Plain SHA256 (no salt):")
+        print(f"    Hash: {plain_hash}")
+        print(f"    Weakness: same password always = same hash")
+        print(f"    Rainbow table attack: POSSIBLE")
+
+        hashed1, salt1 = hash_with_salt(password, algorithm='sha256')
+        hashed2, salt2 = hash_with_salt(password, algorithm='sha256')
+        print(f"\n[2] SHA256 with random salt:")
+        print(f"    Salt 1: {salt1}")
+        print(f"    Hash 1: {hashed1}")
+        print(f"    Salt 2: {salt2}")
+        print(f"    Hash 2: {hashed2}")
+        print(f"    Same password, different hashes!")
+        print(f"    Rainbow table attack: IMPOSSIBLE")
+
+        verified = verify_salted_hash(password, salt1, hashed1)
+        print(f"\n[3] Verification: {verified}")
+        print(f"    Password '{password}' matches stored hash: {verified}\n")
+
     elif args.crack:
         target = args.crack
         algo = identify_hash(target)
@@ -70,7 +100,7 @@ Examples:
         print(f"[*] Detected algorithm: {algo}\n")
 
         if args.method == 'brute':
-            brute_force(target, algo, max_length=args.max_length)
+            brute_force(target, algo, max_length=args.max_length, threads=args.threads)
         elif args.method == 'dictionary':
             if not args.wordlist:
                 print("[-] Please provide a wordlist with --wordlist")
