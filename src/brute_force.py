@@ -1,67 +1,46 @@
 import itertools
 import string
-import threading
+import multiprocessing
 from src.hasher import hash_password
 
-found_password = None
-found_lock = threading.Lock()
-
-def brute_force_worker(target_hash, algorithm, candidates, result):
-    global found_password
+def worker(args):
+    target_hash, algorithm, candidates = args
     for candidate in candidates:
-        if found_password:
-            return
-        candidate_hash = hash_password(candidate, algorithm)
-        if candidate_hash == target_hash:
-            with found_lock:
-                found_password = candidate
-                result.append(candidate)
-            return
+        if hash_password(candidate, algorithm) == target_hash:
+            return candidate
+    return None
 
-def brute_force(target_hash, algorithm, max_length=6, charset=None, threads=4):
-    global found_password
-    found_password = None
-
+def brute_force(target_hash, algorithm, max_length=6, charset=None, threads=None):
     if charset is None:
         charset = string.ascii_lowercase + string.digits
 
+    cores = multiprocessing.cpu_count()
     print(f"[*] Starting brute force attack...")
     print(f"[*] Charset: {charset}")
     print(f"[*] Max length: {max_length}")
-    print(f"[*] Threads: {threads}")
+    print(f"[*] CPU cores: {cores}")
 
     attempts = 0
-    result = []
 
     for length in range(1, max_length + 1):
-        if found_password:
-            break
-
         print(f"[*] Trying length {length}...")
-        all_candidates = list(itertools.product(charset, repeat=length))
-        candidates_str = [''.join(c) for c in all_candidates]
-        attempts += len(candidates_str)
 
-        chunk_size = max(1, len(candidates_str) // threads)
-        chunks = [candidates_str[i:i+chunk_size] for i in range(0, len(candidates_str), chunk_size)]
+        all_candidates = [''.join(c) for c in itertools.product(charset, repeat=length)]
+        attempts += len(all_candidates)
 
-        thread_list = []
-        for chunk in chunks:
-            t = threading.Thread(target=brute_force_worker, args=(target_hash, algorithm, chunk, result))
-            t.start()
-            thread_list.append(t)
+        chunk_size = max(1, len(all_candidates) // cores)
+        chunks = [all_candidates[i:i+chunk_size] for i in range(0, len(all_candidates), chunk_size)]
+        tasks = [(target_hash, algorithm, chunk) for chunk in chunks]
 
-        for t in thread_list:
-            t.join()
+        with multiprocessing.Pool(processes=cores) as pool:
+            results = pool.map(worker, tasks)
 
-        if found_password:
-            break
-
-    if found_password:
-        print(f"\n[+] PASSWORD FOUND!")
-        print(f"[+] Password: {found_password}")
-        print(f"[+] Attempts: {attempts:,}")
-        return found_password
+        for result in results:
+            if result:
+                print(f"\n[+] PASSWORD FOUND!")
+                print(f"[+] Password: {result}")
+                print(f"[+] Attempts: {attempts:,}")
+                return result
 
     print(f"[-] Password not found after {attempts:,} attempts.")
     return None
