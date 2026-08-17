@@ -1,29 +1,35 @@
 # Password Cracker
 
-A password cracking tool built with Python that demonstrates three attack techniques: brute force, dictionary attack, and rainbow table lookup. Shows why weak passwords are dangerous and how attackers crack credentials.
+A password cracking tool built with Python demonstrating three attack techniques: brute force, dictionary attack, and rainbow table lookup. Also demonstrates why salting defeats rainbow tables. Educational tool for understanding password security.
 
 ## Features
 
-- Hash generator — hash any password with MD5, SHA1, SHA224, SHA256, SHA384, SHA512
-- Hash identifier — automatically detects the algorithm from hash length
-- Brute force attack — tries all possible character combinations using itertools
+- Hash generator — supports MD5, SHA1, SHA224, SHA256, SHA384, SHA512
+- Hash identifier — automatically detects algorithm from hash length
+- Brute force attack — tries all character combinations using multiprocessing across all CPU cores
 - Dictionary attack — tests passwords from a wordlist against the target hash
 - Rainbow table — pre-computes hashes for instant lookup
-- Clean CLI interface — built with argparse, progress updates every 100k attempts
+- Salting demo — shows why salted hashes defeat rainbow table attacks
+- 12-core multiprocessing — parallel cracking across all available CPU cores
 
 ## Results
 
-| Attack | Target | Password | Attempts |
-|--------|--------|----------|----------|
-| Dictionary | MD5 hash | password | 2 |
-| Brute force | MD5 hash | ab | 38 |
+| Attack | Target | Password | Result |
+|--------|--------|----------|--------|
+| Dictionary | MD5 hash | password | Found in 2 attempts |
+| Brute force | MD5 hash | ab | Found in 3 seconds (12 cores) |
+| Brute force | MD5 hash | Sapes210! | ~18,000 years (CPU) |
+
+## Why Passwords Like "Sapes210!" Are Safe
+
+A 9-character password using uppercase, lowercase, digits and symbols has 94^9 = ~572 quadrillion combinations. At 2 million attempts per second (12-core CPU), cracking it would take ~18,000 years. Even a military-grade GPU (RTX 4090 at 100 billion hashes/sec) would need ~66 days. This is why length and complexity matter.
 
 ## Project Structure
 
     password-cracker/
     ├── src/
-    │   ├── hasher.py        # Hash generation and identification
-    │   ├── brute_force.py   # Brute force attack engine
+    │   ├── hasher.py        # Hash generation, salting, identification
+    │   ├── brute_force.py   # Multiprocessing brute force engine
     │   ├── dictionary.py    # Dictionary attack engine
     │   └── rainbow.py       # Rainbow table build and lookup
     ├── wordlists/
@@ -51,9 +57,13 @@ Dictionary attack:
 
     python main.py --crack 5f4dcc3b5aa765d61d8327deb882cf99 --method dictionary --wordlist wordlists\common.txt
 
-Brute force attack:
+Brute force (12 cores):
 
     python main.py --crack 5f4dcc3b5aa765d61d8327deb882cf99 --method brute --max-length 6
+
+Salting demo:
+
+    python main.py --demo-salt password123
 
 Build rainbow table:
 
@@ -61,11 +71,7 @@ Build rainbow table:
 
 Rainbow lookup:
 
-    python main.py --crack 5f4dcc3b5aa765d61d8327deb882cf99 --method rainbow
-
-## Why This Matters
-
-This tool demonstrates why password security matters. A 2-character password takes 38 brute force attempts. A 6-character password takes ~2.2 billion. Adding uppercase letters, numbers, and symbols multiplies the search space exponentially — making brute force practically impossible. Dictionary attacks show why common passwords like "password" or "123456" are instantly cracked.
+    python main.py --crack <hash> --method rainbow
 
 ## Tech Stack
 
@@ -74,6 +80,7 @@ This tool demonstrates why password security matters. A 2-character password tak
 | Python 3.12 | Core language |
 | hashlib | Built-in hash generation |
 | itertools | Brute force combinations |
+| multiprocessing | Parallel cracking across all CPU cores |
 | argparse | CLI interface |
 
 ## Author
